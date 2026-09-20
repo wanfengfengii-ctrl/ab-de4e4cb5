@@ -11,3 +11,5 @@ __pycache__/
 .nox/
 .pnpm-store/
 *.py[cod]
+frontend/dist/
+backend/static/

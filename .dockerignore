@@ -1,0 +1,10 @@
+**/node_modules
+frontend/dist
+backend/.venv
+backend/static
+**/__pycache__
+**/*.pyc
+.git
+.pytest_cache
+.mypy_cache
+.ruff_cache

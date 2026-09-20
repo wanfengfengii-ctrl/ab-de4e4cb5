@@ -1,0 +1,36 @@
+services:
+  web:
+    build:
+      context: .
+      target: runtime
+    image: hazard-audit-console:latest
+    environment:
+      # the container always serves on 8000 internally; the host-facing
+      # port is configurable below
+      UVICORN_WORKERS: "1"
+    ports:
+      # configurable host port, defaults to 8080:
+      #   HOST_PORT=9000 docker compose up --build
+      - "${HOST_PORT:-8080}:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 8s
+    restart: unless-stopped
+
+  verify:
+    build:
+      context: .
+      target: verify
+    image: hazard-audit-console:verify
+    depends_on:
+      web:
+        condition: service_healthy
+    environment:
+      BASE_URL: "http://web:8000"
+    restart: "no"
+    # one-shot: runs acceptance tests against the real HTTP API, prints the
+    # report and exits, reporting the result through its exit code
+    command: ["python", "acceptance.py"]
