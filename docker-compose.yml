@@ -1,0 +1,48 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: interlock-audit:latest
+    container_name: interlock-audit-api
+    ports:
+      # Host port is configurable: HOST_PORT=9000 docker compose up
+      - "${HOST_PORT:-8000}:8000"
+    environment:
+      AUDIT_STATE_CAP: "${AUDIT_STATE_CAP:-2000000}"
+    restart: unless-stopped
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - |
+          import json, sys, urllib.request as u
+          r = u.urlopen('http://localhost:8000/health', timeout=3)
+          sys.exit(0 if r.status == 200 and json.load(r).get('status') == 'ok' else 1)
+      interval: 5s
+      timeout: 4s
+      retries: 12
+      start_period: 5s
+
+  # One-shot acceptance service: runs every end-to-end check over the real
+  # HTTP API, then exits. Its container exit code is the verdict
+  # (0 = all checks passed, 1 = failure, 2 = service unreachable).
+  #
+  # Typical use:
+  #   docker compose run --rm verify
+  # or, blocking the whole stack on the verdict:
+  #   docker compose up --abort-on-container-exit --exit-code-from verify
+  verify:
+    image: interlock-audit:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "acceptance/run_acceptance.py"]
+    environment:
+      API_BASE: "http://api:8000"
+      ACCEPTANCE_TIMEOUT: "60"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: "no"
